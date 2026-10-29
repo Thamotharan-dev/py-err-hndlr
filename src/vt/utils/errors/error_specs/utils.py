@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from typing import overload, TypeGuard
 
 from vt.utils.errors.error_specs import ERR_DATA_FORMAT_ERR, type_name_map
+from vt.utils.errors.error_specs.errmsg import ErrorMsgFormer
 from vt.utils.errors.error_specs.exceptions import VTExitingException
 
 
@@ -343,6 +344,84 @@ def require_iterable[T](
                 raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(
                     errmsg
                 )
+    return True
+
+
+# endregion
+
+
+# region optional_bool() / optional_non_empty()
+def optional_bool(
+    val_to_check: bool | None,
+    var_name: str,
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    type_name_mapping: dict[type, str] | None = None,
+) -> TypeGuard[bool | None]:
+    """
+    Validate ``val_to_check`` as a ``bool`` when it is not ``None``.
+
+    >>> optional_bool(None, "guess")
+    True
+    >>> optional_bool(True, "guess")
+    True
+    >>> optional_bool("yes", "guess")  # type: ignore[arg-type]
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: TypeError: 'guess' must be a boolean
+    """
+    if val_to_check is not None:
+        require_type(
+            val_to_check,
+            var_name,
+            bool,
+            exception_to_raise,
+            exit_code,
+            prefix=prefix,
+            suffix=suffix,
+            lenient=lenient,
+            type_name_mapping=type_name_mapping,
+        )
+    return True
+
+
+def optional_non_empty(
+    val_to_check: str | None,
+    var_name: str,
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+) -> TypeGuard[str | None]:
+    """
+    Validate ``val_to_check`` as a non-empty ``str`` when it is not ``None``.
+
+    >>> optional_non_empty(None, "branch")
+    True
+    >>> optional_non_empty("master", "branch")
+    True
+    >>> optional_non_empty("", "branch")
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: branch is required
+    """
+    if val_to_check is None:
+        return True
+    require_type(
+        val_to_check,
+        var_name,
+        str,
+        exception_to_raise,
+        exit_code,
+        prefix=prefix,
+        suffix=suffix,
+    )
+    if val_to_check == "":
+        errmsg = ErrorMsgFormer.required(var_name, prefix=prefix, suffix=suffix)
+        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
     return True
 
 
