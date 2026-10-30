@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vt-err-hndlr"
-version = "0.0.0dev8"
+version = "0.0.0dev7"
 description = "Common errors and warnings for Vaastav Technologies (vt) projects."
 readme = "README.md"
 keywords = ["error", "error-handling", "error-handler", "warning", "warn"]
@@ -83,6 +83,11 @@ legacy_tox_ini = """
     commands =
       sphinx-build -q -b html docs/source docs/build/html
 """
+
+[tool.mypy]
+explicit_package_bases = true
+mypy_path = "src"
+namespace_packages = true
 
 [tool.pytest.ini_options]
 addopts = ["--doctest-modules", # Test all the doctests

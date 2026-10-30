@@ -359,28 +359,6 @@ class ErrorMessageFormer:
         msg += f"{_suffix}{suffix}"
         return msg
 
-    def required(
-        self,
-        arg: str,
-        *,
-        prefix: str = "",
-        suffix: str = "",
-        _prefix: str = "",
-        _suffix: str = " is required",
-    ) -> str:
-        """
-        Builds an error message stating that ``arg`` must be supplied.
-
-        Examples::
-
-            >>> ErrorMsgFormer.required("orphan")
-            'orphan is required'
-
-            >>> ErrorMsgFormer.required("branch", prefix="Invalid: ")
-            'Invalid: branch is required'
-        """
-        return f"{prefix}{_prefix}{arg}{_suffix}{suffix}"
-
     def clone_with(
         self,
         use_oxford_comma: bool | None = None,
