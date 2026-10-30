@@ -68,7 +68,7 @@ type_name_map: dict[type, str] = {
 }
 
 type_truthy_map: dict[type, str] = {
-    str: "non empty",
-    int: "non zero",
-    float: "non zero",
+    str: "an non-empty string",
+    int: "a non-zero int",
+    float: "a non-zero float",
 }

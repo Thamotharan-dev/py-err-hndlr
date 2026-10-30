@@ -42,7 +42,9 @@ dependencies = [
 
 [dependency-groups]
 lint = ["ruff"]
-typecheck = ["mypy"]
+typecheck = [
+    "mypy>=2.4.1",
+]
 dev = [{include-group = "lint"}, {include-group = "typecheck"}]
 test = ["pytest"]
 cover = [{include-group = "test"}, "pytest-cov"]

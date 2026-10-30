@@ -17,7 +17,7 @@ from vt.utils.errors.error_specs import (
 from vt.utils.errors.error_specs.exceptions import VTExitingException
 
 
-# region require_type() and its overloads
+# region require_type() and optional_type()
 @overload
 def require_type(
     val_to_check: bool,
@@ -84,23 +84,6 @@ def require_type(
 ) -> TypeGuard[str]: ...
 
 
-@overload
-def require_type[T](
-    val_to_check: T,
-    var_name: str,
-    val_type: type[T],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    truthy: bool = True,
-    type_name_mapping: dict[type, str] | None = None,
-    type_truthy_mapping: dict[type, str] | None = None,
-) -> TypeGuard[T]: ...
-
-
 def require_type[T](
     val_to_check: T,
     var_name: str,
@@ -144,7 +127,7 @@ def require_type[T](
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
     :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
-        int -> ``non zero``, str -> ``non empty``.
+        str -> ``an non-empty string``, int -> ``a non-zero int``.
 
     :raises exception_to_raise: If the value is not an instance of ``val_type``, or is
         falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
@@ -189,7 +172,7 @@ def require_type[T](
 
     >>> require_type("", "branch", str)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be non empty
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be an non-empty string
 
     >>> require_type("", "branch", str, truthy=False)
     True
@@ -198,7 +181,7 @@ def require_type[T](
 
     >>> require_type(0, "count", int)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be non zero
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be a non-zero int
 
     >>> require_type(0, "count", int, truthy=False)
     True
@@ -221,10 +204,185 @@ def require_type[T](
     return True
 
 
+@overload
+def optional_type(
+    val_to_check: bool | None,
+    var_name: str,
+    val_type: type[bool],
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    type_name_mapping: dict[type, str] | None = None,
+) -> TypeGuard[bool | None]: ...
+
+
+@overload
+def optional_type(
+    val_to_check: int | None,
+    var_name: str,
+    val_type: type[int],
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    truthy: bool = True,
+    type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
+) -> TypeGuard[int | None]: ...
+
+
+@overload
+def optional_type(
+    val_to_check: float | None,
+    var_name: str,
+    val_type: type[float],
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    truthy: bool = True,
+    type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
+) -> TypeGuard[float | None]: ...
+
+
+@overload
+def optional_type(
+    val_to_check: str | None,
+    var_name: str,
+    val_type: type[str],
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    truthy: bool = True,
+    type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
+) -> TypeGuard[str | None]: ...
+
+
+def optional_type[T](
+    val_to_check: T | None,
+    var_name: str,
+    val_type: type[T],
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    truthy: bool = True,
+    type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
+) -> TypeGuard[T | None]:
+    """
+    Like ``require_type``, but ``None`` is allowed and skips the check.
+
+    Non-``None`` values use the same ``truthy`` default as ``require_type``:
+    ``""``, ``0``, and ``0.0`` are rejected. ``False`` is still accepted for ``bool``.
+
+    :param val_to_check: The value to validate, or ``None`` to skip the check.
+    :type val_to_check: T | None
+    :param var_name: Name of the variable being validated. Used in error messages.
+    :type var_name: str
+    :param val_type: The expected type the value must conform to when it is not ``None``.
+    :type val_type: type[T]
+    :param exception_to_raise: Exception type to raise. Must derive from ``VTExitingException``.
+    :type exception_to_raise: type[VTExitingException]
+    :param exit_code: Exit code to assign to the raised exception.
+    :type exit_code: int
+    :param prefix: Optional prefix for error messages.
+    :type prefix: str
+    :param suffix: Optional suffix for error messages.
+    :type suffix: str
+    :param lenient: If True, uses `isinstance()` for validation (subclasses allowed, e.g. ``bool`` is an ``int`` if
+        this options is ``True``). If False, uses strict `type(...) is ...`, i.e., ``bool`` is no longer considered an
+        ``int``.
+    :type lenient: bool
+    :param truthy: If True (the default), reject falsy non-``None`` values after the type check:
+        ``""``, ``0``, and ``0.0``. Ignored when ``val_type`` is ``bool``. Use
+        ``optional_iterable`` for lists, sets, tuples, and deques.
+    :type truthy: bool
+    :param type_name_mapping: name mapping between types, like str -> string.
+    :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
+        str -> ``an non-empty string``, int -> ``a non-zero int``.
+
+    :raises exception_to_raise: If a non-``None`` value is not an instance of ``val_type``, or is
+        falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
+
+    :return: True when validation succeeds.
+
+    >>> optional_type(None, "guess", bool)
+    True
+    >>> optional_type(False, "guess", bool)
+    True
+    >>> optional_type("master", "branch", str)
+    True
+    >>> optional_type("", "branch", str)
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be an non-empty string
+    >>> optional_type("yes", "guess", bool)  # type: ignore[arg-type]
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: TypeError: 'guess' must be a boolean
+    >>> optional_type(None, "count", int)
+    True
+    >>> optional_type(3, "count", int)
+    True
+    >>> optional_type(0, "count", int)
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be a non-zero int
+    >>> optional_type(0, "count", int, truthy=False)
+    True
+    >>> optional_type(None, "ratio", float)
+    True
+    >>> optional_type(1.5, "ratio", float)
+    True
+    >>> optional_type(0.0, "ratio", float)
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'ratio' must be a non-zero float
+    """
+    if val_to_check is None:
+        return True
+    if val_type is bool:
+        return require_type(
+            val_to_check,
+            var_name,
+            val_type,
+            exception_to_raise,
+            exit_code,
+            prefix=prefix,
+            suffix=suffix,
+            lenient=lenient,
+            type_name_mapping=type_name_mapping,
+        )  # type: ignore[call-overload]  # implementation is generic; overloads are bool/int/float/str
+    return require_type(
+        val_to_check,
+        var_name,
+        val_type,
+        exception_to_raise,
+        exit_code,
+        prefix=prefix,
+        suffix=suffix,
+        lenient=lenient,
+        truthy=truthy,
+        type_name_mapping=type_name_mapping,
+        type_truthy_mapping=type_truthy_mapping,
+    )  # type: ignore[call-overload]  # implementation is generic; overloads are bool/int/float/str
+
+
 # endregion
 
 
-# region require_iterable() and its overloads
+# region require_iterable() and optional_iterable()
 @overload
 def require_iterable[T](
     val_to_check: list[T],
@@ -409,10 +567,6 @@ def require_iterable[T](
     return True
 
 
-# endregion
-
-
-# region optional_iterable() and its overloads
 @overload
 def optional_iterable[T](
     val_to_check: list[T] | None,
@@ -534,202 +688,6 @@ def optional_iterable[T](
         suffix=suffix,
         empty=empty,
     )  # type: ignore[call-overload]  # reuse require_iterable; overloads are collection-specific
-
-
-# endregion
-
-
-# region optional_type() and its overloads
-@overload
-def optional_type(
-    val_to_check: bool | None,
-    var_name: str,
-    val_type: type[bool],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    type_name_mapping: dict[type, str] | None = None,
-) -> TypeGuard[bool | None]: ...
-
-
-@overload
-def optional_type(
-    val_to_check: int | None,
-    var_name: str,
-    val_type: type[int],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    truthy: bool = True,
-    type_name_mapping: dict[type, str] | None = None,
-    type_truthy_mapping: dict[type, str] | None = None,
-) -> TypeGuard[int | None]: ...
-
-
-@overload
-def optional_type(
-    val_to_check: float | None,
-    var_name: str,
-    val_type: type[float],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    truthy: bool = True,
-    type_name_mapping: dict[type, str] | None = None,
-    type_truthy_mapping: dict[type, str] | None = None,
-) -> TypeGuard[float | None]: ...
-
-
-@overload
-def optional_type(
-    val_to_check: str | None,
-    var_name: str,
-    val_type: type[str],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    truthy: bool = True,
-    type_name_mapping: dict[type, str] | None = None,
-    type_truthy_mapping: dict[type, str] | None = None,
-) -> TypeGuard[str | None]: ...
-
-
-@overload
-def optional_type[T](
-    val_to_check: T | None,
-    var_name: str,
-    val_type: type[T],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    truthy: bool = True,
-    type_name_mapping: dict[type, str] | None = None,
-    type_truthy_mapping: dict[type, str] | None = None,
-) -> TypeGuard[T | None]: ...
-
-
-def optional_type[T](
-    val_to_check: T | None,
-    var_name: str,
-    val_type: type[T],
-    exception_to_raise: type[VTExitingException] = VTExitingException,
-    exit_code: int = ERR_DATA_FORMAT_ERR,
-    *,
-    prefix: str = "",
-    suffix: str = "",
-    lenient: bool = False,
-    truthy: bool = True,
-    type_name_mapping: dict[type, str] | None = None,
-    type_truthy_mapping: dict[type, str] | None = None,
-) -> TypeGuard[T | None]:
-    """
-    Like ``require_type``, but ``None`` is allowed and skips the check.
-
-    Non-``None`` values use the same ``truthy`` default as ``require_type``:
-    ``""``, ``0``, and ``0.0`` are rejected. ``False`` is still accepted for ``bool``.
-
-    :param val_to_check: The value to validate, or ``None`` to skip the check.
-    :type val_to_check: T | None
-    :param var_name: Name of the variable being validated. Used in error messages.
-    :type var_name: str
-    :param val_type: The expected type the value must conform to when it is not ``None``.
-    :type val_type: type[T]
-    :param exception_to_raise: Exception type to raise. Must derive from ``VTExitingException``.
-    :type exception_to_raise: type[VTExitingException]
-    :param exit_code: Exit code to assign to the raised exception.
-    :type exit_code: int
-    :param prefix: Optional prefix for error messages.
-    :type prefix: str
-    :param suffix: Optional suffix for error messages.
-    :type suffix: str
-    :param lenient: If True, uses `isinstance()` for validation (subclasses allowed, e.g. ``bool`` is an ``int`` if
-        this options is ``True``). If False, uses strict `type(...) is ...`, i.e., ``bool`` is no longer considered an
-        ``int``.
-    :type lenient: bool
-    :param truthy: If True (the default), reject falsy non-``None`` values after the type check:
-        ``""``, ``0``, and ``0.0``. Ignored when ``val_type`` is ``bool``. Use
-        ``optional_iterable`` for lists, sets, tuples, and deques.
-    :type truthy: bool
-    :param type_name_mapping: name mapping between types, like str -> string.
-    :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
-        int -> ``non zero``, str -> ``non empty``.
-
-    :raises exception_to_raise: If a non-``None`` value is not an instance of ``val_type``, or is
-        falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
-
-    :return: True when validation succeeds.
-
-    >>> optional_type(None, "guess", bool)
-    True
-    >>> optional_type(False, "guess", bool)
-    True
-    >>> optional_type("master", "branch", str)
-    True
-    >>> optional_type("", "branch", str)
-    Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be non empty
-    >>> optional_type("yes", "guess", bool)  # type: ignore[arg-type]
-    Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: TypeError: 'guess' must be a boolean
-    >>> optional_type(None, "count", int)
-    True
-    >>> optional_type(3, "count", int)
-    True
-    >>> optional_type(0, "count", int)
-    Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be non zero
-    >>> optional_type(0, "count", int, truthy=False)
-    True
-    >>> optional_type(None, "ratio", float)
-    True
-    >>> optional_type(1.5, "ratio", float)
-    True
-    >>> optional_type(0.0, "ratio", float)
-    Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'ratio' must be non zero
-    """
-    if val_to_check is None:
-        return True
-    if val_type is bool:
-        return require_type(
-            val_to_check,
-            var_name,
-            val_type,
-            exception_to_raise,
-            exit_code,
-            prefix=prefix,
-            suffix=suffix,
-            lenient=lenient,
-            type_name_mapping=type_name_mapping,
-        )
-    return require_type(
-        val_to_check,
-        var_name,
-        val_type,
-        exception_to_raise,
-        exit_code,
-        prefix=prefix,
-        suffix=suffix,
-        lenient=lenient,
-        truthy=truthy,
-        type_name_mapping=type_name_mapping,
-        type_truthy_mapping=type_truthy_mapping,
-    )
 
 
 # endregion
