@@ -9,7 +9,11 @@ from collections import deque
 from collections.abc import Iterable
 from typing import overload, TypeGuard
 
-from vt.utils.errors.error_specs import ERR_DATA_FORMAT_ERR, type_name_map
+from vt.utils.errors.error_specs import (
+    ERR_DATA_FORMAT_ERR,
+    type_name_map,
+    type_truthy_map,
+)
 from vt.utils.errors.error_specs.exceptions import VTExitingException
 
 
@@ -25,7 +29,6 @@ def require_type(
     prefix: str = "",
     suffix: str = "",
     lenient: bool = False,
-    truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[bool]: ...
 
@@ -43,6 +46,7 @@ def require_type(
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[int]: ...
 
 
@@ -59,6 +63,7 @@ def require_type(
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[float]: ...
 
 
@@ -75,6 +80,7 @@ def require_type(
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[str]: ...
 
 
@@ -91,6 +97,7 @@ def require_type[T](
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[T]: ...
 
 
@@ -106,6 +113,7 @@ def require_type[T](
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[T]:
     """
     Validates that the provided value matches the specified type. If it does not,
@@ -130,14 +138,16 @@ def require_type[T](
         ``int``.
     :type lenient: bool
     :param truthy: If True (the default), reject falsy values after the type check:
-        ``""``, ``0``, ``0.0``, and empty collections. The only exception is ``bool``:
-        ``False`` is still accepted. Pass ``truthy=False`` when ``0`` or an empty
-        collection is a valid value.
+        ``""``, ``0``, ``0.0``, and empty collections. Ignored when ``val_type`` is
+        ``bool`` (``False`` is a valid boolean). Pass ``truthy=False`` when ``0`` or an
+        empty collection is a valid value.
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
+    :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
+        int -> ``non zero``, str -> ``non empty``.
 
     :raises exception_to_raise: If the value is not an instance of ``val_type``, or is
-        falsy when ``truthy`` is True.
+        falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
 
     :return: True when validation succeeds.
 
@@ -179,7 +189,7 @@ def require_type[T](
 
     >>> require_type("", "branch", str)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' is required
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be non empty
 
     >>> require_type("", "branch", str, truthy=False)
     True
@@ -188,7 +198,7 @@ def require_type[T](
 
     >>> require_type(0, "count", int)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' is required
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be non zero
 
     >>> require_type([], "items", list, truthy=False)
     True
@@ -204,7 +214,9 @@ def require_type[T](
         errmsg = f"{prefix}'{var_name}' must be {typename}{suffix}"
         raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
     if truthy and val_type is not bool and not val_to_check:
-        errmsg = f"{prefix}'{var_name}' is required{suffix}"
+        type_truthy_mapping = type_truthy_mapping or type_truthy_map
+        phrase = type_truthy_mapping.get(val_type, "truthy")
+        errmsg = f"{prefix}'{var_name}' must be {phrase}{suffix}"
         raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
     return True
 
@@ -412,7 +424,6 @@ def optional_type(
     prefix: str = "",
     suffix: str = "",
     lenient: bool = False,
-    truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[bool | None]: ...
 
@@ -430,6 +441,7 @@ def optional_type(
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[int | None]: ...
 
 
@@ -446,6 +458,7 @@ def optional_type(
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[float | None]: ...
 
 
@@ -462,6 +475,7 @@ def optional_type(
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[str | None]: ...
 
 
@@ -478,6 +492,7 @@ def optional_type[T](
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[T | None]: ...
 
 
@@ -493,6 +508,7 @@ def optional_type[T](
     lenient: bool = False,
     truthy: bool = True,
     type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
 ) -> TypeGuard[T | None]:
     """
     Like ``require_type``, but ``None`` is allowed and skips the check.
@@ -525,9 +541,11 @@ def optional_type[T](
         collection is a valid value.
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
+    :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
+        int -> ``non zero``, str -> ``non empty``.
 
     :raises exception_to_raise: If a non-``None`` value is not an instance of ``val_type``, or is
-        falsy when ``truthy`` is True.
+        falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
 
     :return: True when validation succeeds.
 
@@ -539,7 +557,7 @@ def optional_type[T](
     True
     >>> optional_type("", "branch", str)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' is required
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be non empty
     >>> optional_type("yes", "guess", bool)  # type: ignore[arg-type]
     Traceback (most recent call last):
     vt.utils.errors.error_specs.exceptions.VTExitingException: TypeError: 'guess' must be a boolean
@@ -549,7 +567,7 @@ def optional_type[T](
     True
     >>> optional_type(0, "count", int)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' is required
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be non zero
     >>> optional_type(0, "count", int, truthy=False)
     True
     >>> optional_type(None, "ratio", float)
@@ -558,12 +576,24 @@ def optional_type[T](
     True
     >>> optional_type(0.0, "ratio", float)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'ratio' is required
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'ratio' must be non zero
     >>> optional_type([], "items", list, truthy=False)
     True
     """
     if val_to_check is None:
         return True
+    if val_type is bool:
+        return require_type(
+            val_to_check,
+            var_name,
+            val_type,
+            exception_to_raise,
+            exit_code,
+            prefix=prefix,
+            suffix=suffix,
+            lenient=lenient,
+            type_name_mapping=type_name_mapping,
+        )
     return require_type(
         val_to_check,
         var_name,
@@ -575,6 +605,7 @@ def optional_type[T](
         lenient=lenient,
         truthy=truthy,
         type_name_mapping=type_name_mapping,
+        type_truthy_mapping=type_truthy_mapping,
     )
 
 

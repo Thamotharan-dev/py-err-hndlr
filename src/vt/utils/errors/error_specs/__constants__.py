@@ -57,6 +57,7 @@ from vt.utils.errors.error_specs.error_codes import (
 # endregion
 
 
+from collections import deque
 import pathlib as __pathlib
 
 type_name_map: dict[type, str] = {
@@ -65,4 +66,15 @@ type_name_map: dict[type, str] = {
     float: "a float",
     bool: "a boolean",
     __pathlib.Path: "a Path",
+}
+
+type_truthy_map: dict[type, str] = {
+    str: "non empty",
+    int: "non zero",
+    float: "non zero",
+    list: "non empty",
+    tuple: "non empty",
+    set: "non empty",
+    dict: "non empty",
+    deque: "non empty",
 }
