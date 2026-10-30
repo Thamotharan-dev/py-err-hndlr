@@ -138,9 +138,9 @@ def require_type[T](
         ``int``.
     :type lenient: bool
     :param truthy: If True (the default), reject falsy values after the type check:
-        ``""``, ``0``, ``0.0``, and empty collections. Ignored when ``val_type`` is
-        ``bool`` (``False`` is a valid boolean). Pass ``truthy=False`` when ``0`` or an
-        empty collection is a valid value.
+        ``""``, ``0``, and ``0.0``. Ignored when ``val_type`` is ``bool`` (``False`` is a
+        valid boolean). Pass ``truthy=False`` when ``0`` is a valid value. Use
+        ``require_iterable`` for lists, sets, tuples, and deques.
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
     :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
@@ -194,13 +194,13 @@ def require_type[T](
     >>> require_type("", "branch", str, truthy=False)
     True
 
-    ``0``, ``0.0``, and empty collections are also rejected unless ``truthy=False``:
+    ``0`` and ``0.0`` are also rejected unless ``truthy=False``:
 
     >>> require_type(0, "count", int)
     Traceback (most recent call last):
     vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'count' must be non zero
 
-    >>> require_type([], "items", list, truthy=False)
+    >>> require_type(0, "count", int, truthy=False)
     True
     """
     actual_type = type(val_to_check)
@@ -412,6 +412,133 @@ def require_iterable[T](
 # endregion
 
 
+# region optional_iterable() and its overloads
+@overload
+def optional_iterable[T](
+    val_to_check: list[T] | None,
+    var_name: str,
+    item_type: type[T] | None = ...,
+    enforce: type[list] = ...,
+    exception_to_raise: type[VTExitingException] = ...,
+    exit_code: int = ...,
+    *,
+    prefix: str = ...,
+    suffix: str = ...,
+    empty: bool | None = ...,
+) -> TypeGuard[list[T] | None]: ...
+
+
+@overload
+def optional_iterable[T](
+    val_to_check: tuple[T, ...] | None,
+    var_name: str,
+    item_type: type[T] | None = ...,
+    enforce: type[tuple] = ...,
+    exception_to_raise: type[VTExitingException] = ...,
+    exit_code: int = ...,
+    *,
+    prefix: str = ...,
+    suffix: str = ...,
+    empty: bool | None = ...,
+) -> TypeGuard[tuple[T, ...] | None]: ...
+
+
+@overload
+def optional_iterable[T](
+    val_to_check: set[T] | None,
+    var_name: str,
+    item_type: type[T] | None = ...,
+    enforce: type[set] = ...,
+    exception_to_raise: type[VTExitingException] = ...,
+    exit_code: int = ...,
+    *,
+    prefix: str = ...,
+    suffix: str = ...,
+    empty: bool | None = ...,
+) -> TypeGuard[set[T] | None]: ...
+
+
+@overload
+def optional_iterable[T](
+    val_to_check: deque[T] | None,
+    var_name: str,
+    item_type: type[T] | None = ...,
+    enforce: type[deque] = ...,
+    exception_to_raise: type[VTExitingException] = ...,
+    exit_code: int = ...,
+    *,
+    prefix: str = ...,
+    suffix: str = ...,
+    empty: bool | None = ...,
+) -> TypeGuard[deque[T] | None]: ...
+
+
+@overload
+def optional_iterable(
+    val_to_check: range | None,
+    var_name: str,
+    item_type: type[int] | None = ...,
+    enforce: type[range] = ...,
+    exception_to_raise: type[VTExitingException] = ...,
+    exit_code: int = ...,
+    *,
+    prefix: str = ...,
+    suffix: str = ...,
+    empty: bool | None = ...,
+) -> TypeGuard[range | None]: ...
+
+
+def optional_iterable[T](
+    val_to_check: Iterable[T] | None,
+    var_name: str,
+    item_type: type[T] | None = None,
+    enforce: type[list]
+    | type[set]
+    | type[tuple]
+    | type[deque]
+    | type[range]
+    | None = None,
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    empty: bool | None = None,
+) -> TypeGuard[Iterable[T] | None]:
+    """
+    Like ``require_iterable``, but ``None`` is allowed and skips the check.
+
+    Collections stay here; do not pass lists, sets, tuples, or deques to
+    ``optional_type``.
+
+    >>> optional_iterable(None, "items")
+    True
+    >>> optional_iterable([1, 2, 3], "items")
+    True
+    >>> optional_iterable([], "items", empty=True)
+    True
+    >>> optional_iterable([], "items", empty=False)
+    Traceback (most recent call last):
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'items' must not be empty
+    """
+    if val_to_check is None:
+        return True
+    return require_iterable(
+        val_to_check,
+        var_name,
+        item_type,
+        enforce,
+        exception_to_raise,
+        exit_code,
+        prefix=prefix,
+        suffix=suffix,
+        empty=empty,
+    )  # type: ignore[call-overload]  # reuse require_iterable; overloads are collection-specific
+
+
+# endregion
+
+
 # region optional_type() and its overloads
 @overload
 def optional_type(
@@ -514,8 +641,7 @@ def optional_type[T](
     Like ``require_type``, but ``None`` is allowed and skips the check.
 
     Non-``None`` values use the same ``truthy`` default as ``require_type``:
-    ``""``, ``0``, ``0.0``, and empty collections are rejected. ``False`` is
-    still accepted for ``bool``. Pass ``truthy=False`` when those values are valid.
+    ``""``, ``0``, and ``0.0`` are rejected. ``False`` is still accepted for ``bool``.
 
     :param val_to_check: The value to validate, or ``None`` to skip the check.
     :type val_to_check: T | None
@@ -536,9 +662,8 @@ def optional_type[T](
         ``int``.
     :type lenient: bool
     :param truthy: If True (the default), reject falsy non-``None`` values after the type check:
-        ``""``, ``0``, ``0.0``, and empty collections. The only exception is ``bool``:
-        ``False`` is still accepted. Pass ``truthy=False`` when ``0`` or an empty
-        collection is a valid value.
+        ``""``, ``0``, and ``0.0``. Ignored when ``val_type`` is ``bool``. Use
+        ``optional_iterable`` for lists, sets, tuples, and deques.
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
     :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
@@ -577,8 +702,6 @@ def optional_type[T](
     >>> optional_type(0.0, "ratio", float)
     Traceback (most recent call last):
     vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'ratio' must be non zero
-    >>> optional_type([], "items", list, truthy=False)
-    True
     """
     if val_to_check is None:
         return True
