@@ -37,14 +37,12 @@ classifiers = [
 license = "Apache-2.0"
 
 dependencies = [
-  "vt-commons >= 0.0.1dev9"
+  "vt-commons >= 0.0.2.dev0"
 ]
 
 [dependency-groups]
 lint = ["ruff"]
-typecheck = [
-    "mypy>=2.4.1",
-]
+typecheck = ["mypy"]
 dev = [{include-group = "lint"}, {include-group = "typecheck"}]
 test = ["pytest"]
 cover = [{include-group = "test"}, "pytest-cov"]

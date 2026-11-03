@@ -17,7 +17,40 @@ from vt.utils.errors.error_specs import (
 from vt.utils.errors.error_specs.exceptions import VTExitingException
 
 
-# region require_type() and optional_type()
+# region require_type() and optional_type() and their overloads
+def _require_type[T](
+    val_to_check: T,
+    var_name: str,
+    val_type: type[T],
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    lenient: bool = False,
+    truthy: bool = True,
+    type_name_mapping: dict[type, str] | None = None,
+    type_truthy_mapping: dict[type, str] | None = None,
+) -> TypeGuard[T]:
+    actual_type = type(val_to_check)
+    if (not lenient and actual_type is not val_type) or (
+        lenient and not isinstance(val_to_check, val_type)
+    ):
+        type_name_mapping = type_name_mapping or type_name_map
+        typename = type_name_mapping.get(
+            val_type, f"an instance of {getattr(val_type, '__name__', str(val_type))}"
+        )
+        errmsg = f"{prefix}'{var_name}' must be {typename}{suffix}"
+        raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
+    if truthy and val_type is not bool and not val_to_check:
+        type_truthy_mapping = type_truthy_mapping or type_truthy_map
+        phrase = type_truthy_mapping.get(val_type, "truthy")
+        errmsg = f"{prefix}'{var_name}' must be {phrase}{suffix}"
+        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
+    return True
+
+
+# region require_type() and its overloads
 @overload
 def require_type(
     val_to_check: bool,
@@ -127,7 +160,7 @@ def require_type[T](
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
     :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
-        str -> ``an non-empty string``, int -> ``a non-zero int``.
+        str -> ``a non-empty string``, int -> ``a non-zero int``.
 
     :raises exception_to_raise: If the value is not an instance of ``val_type``, or is
         falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
@@ -172,7 +205,7 @@ def require_type[T](
 
     >>> require_type("", "branch", str)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be an non-empty string
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be a non-empty string
 
     >>> require_type("", "branch", str, truthy=False)
     True
@@ -186,24 +219,25 @@ def require_type[T](
     >>> require_type(0, "count", int, truthy=False)
     True
     """
-    actual_type = type(val_to_check)
-    if (not lenient and actual_type is not val_type) or (
-        lenient and not isinstance(val_to_check, val_type)
-    ):
-        type_name_mapping = type_name_mapping or type_name_map
-        typename = type_name_mapping.get(
-            val_type, f"an instance of {getattr(val_type, '__name__', str(val_type))}"
-        )
-        errmsg = f"{prefix}'{var_name}' must be {typename}{suffix}"
-        raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
-    if truthy and val_type is not bool and not val_to_check:
-        type_truthy_mapping = type_truthy_mapping or type_truthy_map
-        phrase = type_truthy_mapping.get(val_type, "truthy")
-        errmsg = f"{prefix}'{var_name}' must be {phrase}{suffix}"
-        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
-    return True
+    return _require_type(
+        val_to_check,
+        var_name,
+        val_type,
+        exception_to_raise,
+        exit_code,
+        prefix=prefix,
+        suffix=suffix,
+        lenient=lenient,
+        truthy=truthy,
+        type_name_mapping=type_name_mapping,
+        type_truthy_mapping=type_truthy_mapping,
+    )
 
 
+# endregion
+
+
+# region optional_type() and its overloads
 @overload
 def optional_type(
     val_to_check: bool | None,
@@ -314,7 +348,7 @@ def optional_type[T](
     :type truthy: bool
     :param type_name_mapping: name mapping between types, like str -> string.
     :param type_truthy_mapping: phrases used when ``truthy`` rejects a value, like
-        str -> ``an non-empty string``, int -> ``a non-zero int``.
+        str -> ``a non-empty string``, int -> ``a non-zero int``.
 
     :raises exception_to_raise: If a non-``None`` value is not an instance of ``val_type``, or is
         falsy when ``truthy`` is True and ``val_type`` is not ``bool``.
@@ -329,7 +363,7 @@ def optional_type[T](
     True
     >>> optional_type("", "branch", str)
     Traceback (most recent call last):
-    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be an non-empty string
+    vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'branch' must be a non-empty string
     >>> optional_type("yes", "guess", bool)  # type: ignore[arg-type]
     Traceback (most recent call last):
     vt.utils.errors.error_specs.exceptions.VTExitingException: TypeError: 'guess' must be a boolean
@@ -352,19 +386,7 @@ def optional_type[T](
     """
     if val_to_check is None:
         return True
-    if val_type is bool:
-        return require_type(
-            val_to_check,
-            var_name,
-            val_type,
-            exception_to_raise,
-            exit_code,
-            prefix=prefix,
-            suffix=suffix,
-            lenient=lenient,
-            type_name_mapping=type_name_mapping,
-        )  # type: ignore[call-overload]  # implementation is generic; overloads are bool/int/float/str
-    return require_type(
+    return _require_type(
         val_to_check,
         var_name,
         val_type,
@@ -376,13 +398,60 @@ def optional_type[T](
         truthy=truthy,
         type_name_mapping=type_name_mapping,
         type_truthy_mapping=type_truthy_mapping,
-    )  # type: ignore[call-overload]  # implementation is generic; overloads are bool/int/float/str
+    )
 
 
 # endregion
+# endregion
 
 
-# region require_iterable() and optional_iterable()
+# region require_iterable() and optional_iterable() and their overloads
+def _require_iterable[T](
+    val_to_check: Iterable[T],
+    var_name: str,
+    item_type: type[T] | None = None,
+    enforce: type[list]
+    | type[set]
+    | type[tuple]
+    | type[deque]
+    | type[range]
+    | None = None,
+    exception_to_raise: type[VTExitingException] = VTExitingException,
+    exit_code: int = ERR_DATA_FORMAT_ERR,
+    *,
+    prefix: str = "",
+    suffix: str = "",
+    empty: bool | None = None,
+) -> TypeGuard[Iterable[T]]:
+    if isinstance(val_to_check, str) or not isinstance(val_to_check, Iterable):
+        errmsg = f"{prefix}'{var_name}' must be a non-str iterable{suffix}"
+        raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
+
+    iterable_type_str = "iterable"
+    if enforce is not None:
+        iterable_type_str = getattr(enforce, "__name__", str(enforce))
+        if not isinstance(val_to_check, enforce):
+            errmsg = f"{prefix}'{var_name}' must be of type {enforce.__name__}{suffix}"
+            raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
+
+    if empty is True and any(True for _ in val_to_check):
+        errmsg = f"{prefix}'{var_name}' must be empty{suffix}"
+        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
+    if empty is False and not any(True for _ in val_to_check):
+        errmsg = f"{prefix}'{var_name}' must not be empty{suffix}"
+        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
+
+    if item_type is not None:
+        for v in val_to_check:
+            if not isinstance(v, item_type):
+                errmsg = f"{prefix}'{var_name}' must be a {iterable_type_str} of {item_type.__name__}s{suffix}"
+                raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(
+                    errmsg
+                )
+    return True
+
+
+# region require_iterable() and its overloads
 @overload
 def require_iterable[T](
     val_to_check: list[T],
@@ -538,35 +607,23 @@ def require_iterable[T](
         Traceback (most recent call last):
         vt.utils.errors.error_specs.exceptions.VTExitingException: ValueError: 'should_be_empty' must be empty
     """
-
-    if isinstance(val_to_check, str) or not isinstance(val_to_check, Iterable):
-        errmsg = f"{prefix}'{var_name}' must be a non-str iterable{suffix}"
-        raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
-
-    iterable_type_str = "iterable"
-    if enforce is not None:
-        iterable_type_str = getattr(enforce, "__name__", str(enforce))
-        if not isinstance(val_to_check, enforce):
-            errmsg = f"{prefix}'{var_name}' must be of type {enforce.__name__}{suffix}"
-            raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(errmsg)
-
-    if empty is True and any(True for _ in val_to_check):
-        errmsg = f"{prefix}'{var_name}' must be empty{suffix}"
-        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
-    if empty is False and not any(True for _ in val_to_check):
-        errmsg = f"{prefix}'{var_name}' must not be empty{suffix}"
-        raise exception_to_raise(errmsg, exit_code=exit_code) from ValueError(errmsg)
-
-    if item_type is not None:
-        for v in val_to_check:
-            if not isinstance(v, item_type):
-                errmsg = f"{prefix}'{var_name}' must be a {iterable_type_str} of {item_type.__name__}s{suffix}"
-                raise exception_to_raise(errmsg, exit_code=exit_code) from TypeError(
-                    errmsg
-                )
-    return True
+    return _require_iterable(
+        val_to_check,
+        var_name,
+        item_type,
+        enforce,
+        exception_to_raise,
+        exit_code,
+        prefix=prefix,
+        suffix=suffix,
+        empty=empty,
+    )
 
 
+# endregion
+
+
+# region optional_iterable() and its overloads
 @overload
 def optional_iterable[T](
     val_to_check: list[T] | None,
@@ -677,7 +734,7 @@ def optional_iterable[T](
     """
     if val_to_check is None:
         return True
-    return require_iterable(
+    return _require_iterable(
         val_to_check,
         var_name,
         item_type,
@@ -687,7 +744,8 @@ def optional_iterable[T](
         prefix=prefix,
         suffix=suffix,
         empty=empty,
-    )  # type: ignore[call-overload]  # reuse require_iterable; overloads are collection-specific
+    )
 
 
+# endregion
 # endregion
