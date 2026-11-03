@@ -37,7 +37,7 @@ classifiers = [
 license = "Apache-2.0"
 
 dependencies = [
-  "vt-commons >= 0.0.1dev9"
+  "vt-commons >= 0.0.2.dev0"
 ]
 
 [dependency-groups]
@@ -83,6 +83,11 @@ legacy_tox_ini = """
     commands =
       sphinx-build -q -b html docs/source docs/build/html
 """
+
+[tool.mypy]
+explicit_package_bases = true
+mypy_path = "src"
+namespace_packages = true
 
 [tool.pytest.ini_options]
 addopts = ["--doctest-modules", # Test all the doctests
